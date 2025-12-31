@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Category, UIMode } from '../types';
 import { ToolDefinition } from '../tools/base';
 import { gemini } from '../services/geminiService';
+import { logMission } from '../services/supabaseService';
 import FileUploader from './FileUploader';
 import { ExifTable, MapWorkspace } from './Workspaces';
 import { 
@@ -75,6 +76,8 @@ const ToolInterface: React.FC<ToolInterfaceProps> = ({ tool, onClose, onProcessi
       }
       finalPrompt += `\n\nFlight Instruction: ${input}`;
       
+      let missionStatus: 'SUCCESS' | 'ERROR' = 'SUCCESS';
+
       if (tool.uiMode === 'bulk' && batchFiles.length > 0) {
         const updatedBatch = [...batchFiles];
         for (let i = 0; i < updatedBatch.length; i++) {
@@ -86,6 +89,7 @@ const ToolInterface: React.FC<ToolInterfaceProps> = ({ tool, onClose, onProcessi
             updatedBatch[i].result = result;
           } catch (err) {
             updatedBatch[i].status = 'error';
+            missionStatus = 'ERROR';
           }
           setBatchFiles([...updatedBatch]);
         }
@@ -106,8 +110,25 @@ const ToolInterface: React.FC<ToolInterfaceProps> = ({ tool, onClose, onProcessi
           setOutput((prev) => prev + chunk);
         }
       }
+
+      // Log mission telemetry to Supabase
+      logMission({
+        tool_id: tool.id,
+        tool_name: tool.name,
+        category: tool.category,
+        status: missionStatus,
+        input_snippet: input || (batchFiles.length > 0 ? `Batch: ${batchFiles.length} files` : 'No input')
+      });
+
     } catch (err) {
       setOutput('COMM_LINK_ERROR: Remote processing core unreachable.');
+      logMission({
+        tool_id: tool.id,
+        tool_name: tool.name,
+        category: tool.category,
+        status: 'ERROR',
+        input_snippet: input || 'Execution crash'
+      });
     } finally {
       setIsLoading(false);
     }
