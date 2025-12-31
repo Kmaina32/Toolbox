@@ -23,6 +23,7 @@ interface BatchItem {
 interface ToolInterfaceProps {
   tool: ToolDefinition;
   onClose: () => void;
+  onProcessingChange?: (isProcessing: boolean) => void;
 }
 
 const WORKSPACE_COMPONENTS: Record<string, React.FC<any>> = {
@@ -30,7 +31,7 @@ const WORKSPACE_COMPONENTS: Record<string, React.FC<any>> = {
   'MapWorkspace': MapWorkspace
 };
 
-const ToolInterface: React.FC<ToolInterfaceProps> = ({ tool, onClose }) => {
+const ToolInterface: React.FC<ToolInterfaceProps> = ({ tool, onClose, onProcessingChange }) => {
   const [input, setInput] = useState('');
   const [batchFiles, setBatchFiles] = useState<BatchItem[]>([]);
   const [output, setOutput] = useState('');
@@ -50,6 +51,10 @@ const ToolInterface: React.FC<ToolInterfaceProps> = ({ tool, onClose }) => {
   useEffect(() => {
     localStorage.setItem(`fp-params-${tool.id}`, JSON.stringify(params));
   }, [params, tool.id]);
+
+  useEffect(() => {
+    onProcessingChange?.(isLoading);
+  }, [isLoading, onProcessingChange]);
 
   const IconComp = tool.icon;
 

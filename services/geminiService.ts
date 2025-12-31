@@ -6,6 +6,17 @@ export class GeminiService {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
+  async measureLatency(): Promise<number> {
+    const start = performance.now();
+    try {
+      // Smallest possible request to check connectivity and latency
+      await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.API_KEY}`, { method: 'HEAD', mode: 'no-cors' });
+      return Math.round(performance.now() - start);
+    } catch (e) {
+      return 0;
+    }
+  }
+
   async processWithFile(prompt: string, fileBase64: string, mimeType: string, systemInstruction?: string): Promise<string> {
     const client = this.ai;
     const response = await client.models.generateContent({

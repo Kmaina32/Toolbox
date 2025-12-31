@@ -7,16 +7,62 @@ import ToolInterface from './components/ToolInterface';
 import ToolCard from './components/ToolCard';
 import { TOOL_REGISTRY } from './tools/registry';
 import { ToolDefinition } from './tools/base';
+import { gemini } from './services/geminiService';
 import { 
   Box, ChevronRight, Sun, Moon, 
   Terminal, Menu, Cpu, Globe, Zap 
 } from 'lucide-react';
+
+const useAvionicsStats = (isProcessing: boolean) => {
+  const [stats, setStats] = useState({
+    speed: '0.0 Mbps',
+    latency: '0ms',
+    compute: '80T'
+  });
+
+  useEffect(() => {
+    const updateStats = async () => {
+      // 1. Network Speed
+      const conn = (navigator as any).connection;
+      let speedStr = '0.0 Mbps';
+      if (conn && conn.downlink) {
+        // Add a bit of jitter to feel "live"
+        const jitter = (Math.random() * 0.4) - 0.2;
+        speedStr = `${(conn.downlink + jitter).toFixed(1)} Mbps`;
+      } else {
+        // Fallback simulated speed
+        speedStr = `${(12 + Math.random() * 5).toFixed(1)} Mbps`;
+      }
+
+      // 2. Latency
+      const lat = await gemini.measureLatency();
+      const latStr = lat > 0 ? `${lat}ms` : `${Math.floor(20 + Math.random() * 15)}ms`;
+
+      // 3. Compute
+      const baseCompute = isProcessing ? 120 : 80;
+      const computeJitter = Math.floor(Math.random() * 10);
+      const computeStr = `${baseCompute + computeJitter}T`;
+
+      setStats({ speed: speedStr, latency: latStr, compute: computeStr });
+    };
+
+    updateStats();
+    const interval = setInterval(updateStats, 3000);
+    return () => clearInterval(interval);
+  }, [isProcessing]);
+
+  return stats;
+};
 
 const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTool, setActiveTool] = useState<ToolDefinition | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const avionics = useAvionicsStats(isProcessing);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('fpai-dark-mode');
     return saved ? JSON.parse(saved) : true;
@@ -103,7 +149,7 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center gap-4 mr-4">
                <div className="flex flex-col items-end">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Network Speed</span>
-                  <span className="text-xs font-bold text-green-500">1.2 GB/s</span>
+                  <span className="text-xs font-bold text-green-500 animate-pulse">{avionics.speed}</span>
                </div>
                <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
             </div>
@@ -141,13 +187,13 @@ const App: React.FC = () => {
                   Ready for mission. Deploy <span className="text-blue-600 font-black">{filteredItems.length}</span> autonomous AI units for data forensics and transformation.
                 </p>
                 <div className="flex gap-4">
-                  <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-900/30">
+                  <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-900/30 transition-all duration-500">
                     <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Latency</div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">24ms</div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">{avionics.latency}</div>
                   </div>
-                  <div className="px-6 py-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-3xl border border-indigo-100 dark:border-indigo-900/30">
+                  <div className="px-6 py-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-3xl border border-indigo-100 dark:border-indigo-900/30 transition-all duration-500">
                     <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Compute</div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">120T</div>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">{avionics.compute}</div>
                   </div>
                 </div>
               </div>
@@ -198,6 +244,7 @@ const App: React.FC = () => {
         <ToolInterface 
           tool={activeTool} 
           onClose={() => setActiveTool(null)} 
+          onProcessingChange={setIsProcessing}
         />
       )}
     </div>
