@@ -1,6 +1,6 @@
 {
-  "name": "OmniSaaS - 200+ AI Tools in One",
-  "description": "A comprehensive meta-platform featuring over 200 specialized AI SaaS tools powered by Gemini, ranging from productivity and content creation to developer utilities and niche business solutions.",
+  "name": "File Pilot AI",
+  "description": "Your intelligent co-pilot for file transformations, forensics, and automated workflows. Powered by Gemini 3.",
   "requestFramePermissions": [
     "camera",
     "microphone",
