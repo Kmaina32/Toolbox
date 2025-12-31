@@ -8,10 +8,12 @@ export interface ToolDefinition {
   category: Category;
   description: string;
   toolType: ToolType;
-  uiMode: UIMode; // New field to drive component selection
+  uiMode: UIMode;
   icon: LucideIcon;
   promptTemplate: string;
   placeholder?: string;
   systemInstruction?: string;
-  parameters?: ToolParameter[]; // New field for tool-specific settings
+  parameters?: ToolParameter[];
+  // Allows a tool to override the default UI with a specialized one
+  workspaceComponent?: string; 
 }

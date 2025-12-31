@@ -1,14 +1,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Standard implementation for Gemini API services
 export class GeminiService {
-  // Use a getter to ensure we always use the latest API key from environment
   private get ai() {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
-  // Handle document/image analysis and extraction
   async processWithFile(prompt: string, fileBase64: string, mimeType: string, systemInstruction?: string): Promise<string> {
     const client = this.ai;
     const response = await client.models.generateContent({
@@ -26,13 +23,34 @@ export class GeminiService {
       },
       config: {
         systemInstruction,
-        temperature: 0.2, // Lower temperature for high precision extraction
+        temperature: 0.2,
       },
     });
     return response.text || "No data extracted.";
   }
 
-  // Standard text generation for general queries
+  async processWithMaps(prompt: string, lat?: number, lng?: number): Promise<{ text: string, links: any[] }> {
+    const client = this.ai;
+    const response = await client.models.generateContent({
+      model: "gemini-2.5-flash-preview-09-2025",
+      contents: prompt,
+      config: {
+        tools: [{ googleMaps: {} }],
+        toolConfig: lat && lng ? {
+          retrievalConfig: {
+            latLng: { latitude: lat, longitude: lng }
+          }
+        } : undefined
+      },
+    });
+
+    const links = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => chunk.maps) || [];
+    return {
+      text: response.text || "No response generated.",
+      links: links.filter(Boolean)
+    };
+  }
+
   async generateText(prompt: string, systemInstruction?: string): Promise<string> {
     const client = this.ai;
     const response = await client.models.generateContent({
@@ -46,7 +64,6 @@ export class GeminiService {
     return response.text || "No response generated.";
   }
 
-  // Image generation using nano banana series models
   async generateImage(prompt: string): Promise<string> {
     const client = this.ai;
     const response = await client.models.generateContent({
@@ -54,24 +71,16 @@ export class GeminiService {
       contents: {
         parts: [{ text: prompt }],
       },
-      config: {
-        imageConfig: {
-          aspectRatio: "1:1",
-        },
-      },
     });
 
-    // Find and return the generated image data
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
-        const base64EncodeString: string = part.inlineData.data;
-        return `data:image/png;base64,${base64EncodeString}`;
+        return `data:image/png;base64,${part.inlineData.data}`;
       }
     }
-    throw new Error("The model did not return an image.");
+    throw new Error("No image returned.");
   }
 
-  // Stream text output for interactive feel
   async *streamText(prompt: string, systemInstruction?: string) {
     const client = this.ai;
     const streamResponse = await client.models.generateContentStream({
@@ -84,9 +93,7 @@ export class GeminiService {
     });
 
     for await (const chunk of streamResponse) {
-      if (chunk.text) {
-        yield chunk.text;
-      }
+      if (chunk.text) yield chunk.text;
     }
   }
 }

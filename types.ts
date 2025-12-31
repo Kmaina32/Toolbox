@@ -23,7 +23,7 @@ export type UIMode = 'processor' | 'studio' | 'lab' | 'desk' | 'chat' | 'bulk';
 export interface ToolParameter {
   id: string;
   label: string;
-  type: 'select' | 'slider' | 'toggle' | 'text';
+  type: 'select' | 'slider' | 'toggle' | 'text' | 'coordinate-picker' | 'date-range';
   options?: { label: string; value: string }[];
   default: any;
 }

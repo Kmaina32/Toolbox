@@ -16,6 +16,8 @@ import { conversionTools } from './definitions/conversionTools';
 import { bulkConverter } from './definitions/bulkConverter';
 import { metadataTools } from './definitions/metadataTools';
 import { forensicsTools } from './definitions/forensicsTools';
+import { meetingNotes } from './definitions/meetingNotes';
+import { personalTutor } from './definitions/personalTutor';
 
 // The master registry of all available SaaS utility tools
 export const TOOL_REGISTRY: ToolDefinition[] = [
@@ -34,7 +36,9 @@ export const TOOL_REGISTRY: ToolDefinition[] = [
   imageGen,
   codeExplainer,
   businessValidator,
-  travelItinerary
+  travelItinerary,
+  meetingNotes,
+  personalTutor
 ];
 
 export const getToolById = (id: string) => TOOL_REGISTRY.find(t => t.id === id);
