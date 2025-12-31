@@ -18,9 +18,11 @@ import { metadataTools } from './definitions/metadataTools';
 import { forensicsTools } from './definitions/forensicsTools';
 import { meetingNotes } from './definitions/meetingNotes';
 import { personalTutor } from './definitions/personalTutor';
+import { saasIdeasRegistry } from './definitions/saasIdeas';
 
 // The master registry of all available SaaS utility tools
 export const TOOL_REGISTRY: ToolDefinition[] = [
+  ...saasIdeasRegistry,
   ...metadataTools,
   ...forensicsTools,
   ...fileTools,

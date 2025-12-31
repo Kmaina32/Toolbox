@@ -10,7 +10,8 @@ import { ToolDefinition } from './tools/base';
 import { gemini } from './services/geminiService';
 import { 
   Box, ChevronRight, Sun, Moon, 
-  Terminal, Menu, Cpu, Globe, Zap 
+  Terminal, Menu, Cpu, Globe, Zap,
+  Search, Grid
 } from 'lucide-react';
 
 const useAvionicsStats = (isProcessing: boolean) => {
@@ -172,12 +173,12 @@ const App: React.FC = () => {
               </div>
               
               <h2 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white mb-6 lg:mb-8 tracking-tighter leading-tight animate-in slide-in-from-bottom duration-700">
-                {selectedCategory === 'All' ? 'Next-Gen File Intelligence.' : selectedCategory}
+                {selectedCategory === 'All' ? '200+ SaaS AI Ideas.' : selectedCategory}
               </h2>
               
               <div className="flex flex-col md:flex-row md:items-center gap-6 lg:gap-10 animate-in fade-in duration-1000 delay-200">
                 <p className="text-slate-500 dark:text-slate-400 font-medium text-base lg:text-lg max-w-xl leading-relaxed">
-                  Ready for mission. Deploy <span className="text-blue-600 font-black">{filteredItems.length}</span> autonomous AI units for data forensics and transformation.
+                  The ultimate SaaS incubator. Explore <span className="text-blue-600 font-black">{filteredItems.length}</span> functional AI tools spanning 15+ industries.
                 </p>
                 <div className="flex gap-3">
                   <div className="px-5 py-3 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/20">

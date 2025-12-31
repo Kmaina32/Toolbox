@@ -1,6 +1,6 @@
 {
-  "name": "File Pilot AI",
-  "description": "Your intelligent co-pilot for file transformations, forensics, and automated workflows. Powered by Gemini 3.",
+  "name": "File Pilot AI - SaaS Incubator",
+  "description": "200+ Specialized AI tools for document forensics, image intelligence, and SaaS business automation. Powered by Gemini 3.",
   "requestFramePermissions": [
     "camera",
     "microphone",
