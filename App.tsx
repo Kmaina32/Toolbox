@@ -5,13 +5,15 @@ import { Category } from './types';
 import Sidebar from './components/Sidebar';
 import ToolInterface from './components/ToolInterface';
 import ToolCard from './components/ToolCard';
+import AuthPage from './components/AuthPage';
 import { TOOL_REGISTRY } from './tools/registry';
 import { ToolDefinition } from './tools/base';
 import { gemini } from './services/geminiService';
+import { supabase } from './services/supabaseService';
 import { 
   Box, ChevronRight, Sun, Moon, 
   Terminal, Menu, Cpu, Globe, Zap,
-  Search, Grid
+  LogOut, AlertCircle, Compass
 } from 'lucide-react';
 
 const useAvionicsStats = (isProcessing: boolean) => {
@@ -51,6 +53,8 @@ const useAvionicsStats = (isProcessing: boolean) => {
 };
 
 const App: React.FC = () => {
+  const [session, setSession] = useState<any>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTool, setActiveTool] = useState<ToolDefinition | null>(null);
@@ -63,10 +67,46 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('fpai-dark-mode');
     return saved ? JSON.parse(saved) : true;
   });
+
   const [recentToolIds, setRecentToolIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('fpai-recent-tools');
     return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+    const initAuth = async () => {
+      if (!supabase) {
+        console.warn("Supabase not configured. Proceeding to Gateway.");
+        setIsAuthChecking(false);
+        return;
+      }
+      
+      try {
+        // Parallelize session check and state update
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+      } catch (err) {
+        console.error("Auth Link Failure:", err);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+
+    initAuth();
+
+    // Listen for changes
+    let subscription: any = null;
+    if (supabase) {
+      const { data } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+        setSession(session);
+      });
+      subscription = data.subscription;
+    }
+
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -77,16 +117,16 @@ const App: React.FC = () => {
     localStorage.setItem('fpai-dark-mode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
-  useEffect(() => {
-    localStorage.setItem('fpai-recent-tools', JSON.stringify(recentToolIds));
-  }, [recentToolIds]);
-
   const handleToolClick = (tool: ToolDefinition) => {
     setActiveTool(tool);
     setRecentToolIds(prev => {
       const filtered = prev.filter(id => id !== tool.id);
       return [tool.id, ...filtered].slice(0, 5);
     });
+  };
+
+  const handleSignOut = async () => {
+    if (supabase) await supabase.auth.signOut();
   };
 
   const filteredItems = useMemo(() => {
@@ -99,6 +139,54 @@ const App: React.FC = () => {
   }, [selectedCategory, searchQuery]);
 
   const selectedCatData = CATEGORIES.find(c => c.id === selectedCategory);
+
+  if (isAuthChecking) {
+    return (
+      <div className="h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="relative mb-8">
+           <div className="h-20 w-20 border-[3px] border-blue-600/10 border-t-blue-600 rounded-full animate-spin"></div>
+           <div className="absolute inset-0 flex items-center justify-center">
+              {/* Added missing Compass icon */}
+              <Compass size={32} className="text-blue-600 animate-pulse" />
+           </div>
+        </div>
+        <h1 className="text-2xl font-black text-white tracking-tighter mb-2">Establishing Uplink</h1>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] max-w-xs leading-loose">
+          Syncing encrypted session keys with high-altitude satellite array...
+        </p>
+      </div>
+    );
+  }
+
+  // If Supabase is totally missing, show a specific error rather than standard login
+  if (!supabase) {
+    return (
+      <div className="h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+        <div className="h-20 w-20 rounded-[2rem] bg-red-500/10 flex items-center justify-center text-red-500 mb-8 border border-red-500/20 shadow-2xl shadow-red-500/10">
+          <AlertCircle size={40} />
+        </div>
+        <h2 className="text-2xl font-black text-white tracking-tighter mb-4">Navigation System Offline</h2>
+        <p className="text-slate-400 max-w-sm text-sm font-medium leading-relaxed mb-8">
+          The Supabase environment variables are missing. Deployment cannot vector without an active database link.
+        </p>
+        <div className="bg-slate-900 border border-white/5 p-4 rounded-2xl text-left w-full max-w-md">
+           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Required Telemetry Keys:</p>
+           <ul className="space-y-1 text-xs font-mono text-slate-300">
+              <li className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div> SUPABASE_URL
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div> SUPABASE_ANON_KEY
+              </li>
+           </ul>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <AuthPage />;
+  }
 
   return (
     <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden transition-colors">
@@ -125,7 +213,7 @@ const App: React.FC = () => {
             
             <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-500 font-black text-[9px] uppercase tracking-[0.2em] border border-transparent dark:border-slate-700/50">
               <Terminal size={10} />
-              Operational Log
+              Authenticated
             </div>
             
             <span className="hidden sm:block text-slate-300 dark:text-slate-700">
@@ -146,7 +234,6 @@ const App: React.FC = () => {
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Network Speed</span>
                   <span className="text-[11px] font-bold text-green-500 animate-pulse">{avionics.speed}</span>
                </div>
-               <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
             </div>
 
             <button 
@@ -156,9 +243,13 @@ const App: React.FC = () => {
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             
-            <div className="h-9 w-9 lg:h-10 lg:w-10 rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-white dark:to-slate-100 text-white dark:text-slate-900 flex items-center justify-center font-black text-xs shadow-xl transition-transform hover:scale-105 active:scale-95 cursor-pointer">
-              FP
-            </div>
+            <button 
+              onClick={handleSignOut}
+              className="h-10 px-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-500 hover:text-white transition-all"
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
           </div>
         </header>
 
@@ -168,67 +259,32 @@ const App: React.FC = () => {
               <div className="flex items-center gap-2 mb-4 animate-in slide-in-from-left duration-700">
                 <div className="h-1 w-8 bg-blue-600 rounded-full shadow-lg shadow-blue-500/20"></div>
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600">
-                  {selectedCategory === 'All' ? 'Central Command' : 'Specialized Vector'}
+                  Welcome, Pilot {session.user.email?.split('@')[0]}
                 </span>
               </div>
               
               <h2 className="text-3xl lg:text-5xl font-black text-slate-900 dark:text-white mb-6 lg:mb-8 tracking-tighter leading-tight animate-in slide-in-from-bottom duration-700">
-                {selectedCategory === 'All' ? '200+ SaaS AI Ideas.' : selectedCategory}
+                Command Terminal
               </h2>
               
               <div className="flex flex-col md:flex-row md:items-center gap-6 lg:gap-10 animate-in fade-in duration-1000 delay-200">
                 <p className="text-slate-500 dark:text-slate-400 font-medium text-base lg:text-lg max-w-xl leading-relaxed">
-                  The ultimate SaaS incubator. Explore <span className="text-blue-600 font-black">{filteredItems.length}</span> functional AI tools spanning 15+ industries.
+                  Your secure AI utility fleet is online. Choose a vector to begin specialized operations.
                 </p>
-                <div className="flex gap-3">
-                  <div className="px-5 py-3 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/20">
-                    <div className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Latency</div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">{avionics.latency}</div>
-                  </div>
-                  <div className="px-5 py-3 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
-                    <div className="text-[9px] font-black text-indigo-600 uppercase tracking-widest mb-1">Compute</div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">{avionics.compute}</div>
-                  </div>
-                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6">
               {filteredItems.map((item, idx) => (
-                <div key={item.id} className="animate-in fade-in slide-in-from-bottom-8 duration-500" style={{ animationDelay: `${idx * 40}ms` }}>
+                <div key={item.id} className="animate-in fade-in slide-in-from-bottom-8 duration-500" style={{ animationDelay: `${idx * 20}ms` }}>
                   <ToolCard
                     tool={item}
                     onClick={() => handleToolClick(item)}
                   />
                 </div>
               ))}
-
-              {filteredItems.length === 0 && (
-                <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-400 dark:text-slate-600">
-                  <div className="h-32 w-32 rounded-[2.5rem] bg-slate-100 dark:bg-slate-900/50 flex items-center justify-center text-7xl shadow-inner mb-8 animate-float">
-                    🎛️
-                  </div>
-                  <h3 className="text-2xl font-black text-slate-800 dark:text-slate-300 uppercase tracking-tighter">No Units Responding</h3>
-                  <p className="mt-2 text-base font-medium opacity-60 px-6 text-center max-w-md">Search criteria out of range. Recalibrate navigation filters.</p>
-                  <button 
-                    onClick={() => {setSearchQuery(''); setSelectedCategory('All');}}
-                    className="mt-8 px-10 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-500/30"
-                  >
-                    Reset Avionics
-                  </button>
-                </div>
-              )}
             </div>
           </div>
-          
-          <footer className="py-12 flex flex-col items-center justify-center border-t border-slate-100 dark:border-slate-900 opacity-30 select-none">
-            <div className="flex items-center gap-8 grayscale mb-6">
-               <Cpu size={24} />
-               <Globe size={24} />
-               <Zap size={24} />
-            </div>
-            <p className="text-[9px] font-black uppercase tracking-[0.6em] text-slate-400">Security / Speed / Intelligence</p>
-          </footer>
         </div>
       </main>
 
